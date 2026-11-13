@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { CheckCircle2, Copy, Lightbulb, Shuffle, X } from "lucide-react";
+import { CheckCircle2, Copy, Lightbulb, Shuffle, SlidersHorizontal, X } from "lucide-react";
 import { api, ApiError } from "../api/client";
 import { inr, signedInr } from "../api/format";
 import type { OptionsResult, Pkg } from "../types";
@@ -10,9 +10,10 @@ import ChangeFlightModal from "../components/ChangeFlightModal";
 import ChangeHotelModal from "../components/ChangeHotelModal";
 import AttractionEditor from "../components/AttractionEditor";
 import CityPlanModal from "../components/CityPlanModal";
+import WhatIfModal from "../components/WhatIfModal";
 import { ErrorBox, Modal, Spinner } from "../components/ui";
 
-type ModalState = null | { t: "flight"; dir: "arrival" | "return" } | { t: "hotel"; city: string } | { t: "attr" } | { t: "cities" } | { t: "confirm" };
+type ModalState = null | { t: "flight"; dir: "arrival" | "return" } | { t: "hotel"; city: string } | { t: "attr" } | { t: "cities" } | { t: "whatif" } | { t: "confirm" };
 
 export default function PackagePage() {
   const { id = "" } = useParams();
@@ -42,6 +43,16 @@ export default function PackagePage() {
     try { changed(await api.removeAttraction(id, attId)); }
     catch (e) { setActionErr(e instanceof ApiError ? e.message : "Could not remove"); }
     finally { setBusyId(null); }
+  }
+
+  async function replan(budget: number) {
+    if (!pkg) return;
+    const r = pkg.request;
+    const res = await api.generate({ name: r.name, departure_city: r.departure_city, country: r.country, start_date: r.start_date,
+      nights: r.nights, adults: r.adults, child_ages: r.child_ages, budget_inr: budget });
+    if (res.status === "IMPOSSIBLE" || !res.package) throw new ApiError(409, (res.reasons ?? [res.message]).join(" "));
+    setModal(null);
+    nav(`/package/${res.package.package_id}`);
   }
 
   async function confirm(allowOver = false) {
@@ -99,6 +110,7 @@ export default function PackagePage() {
             {pkg.plan.length >= 1 && (
               <button className="btn-secondary w-full" onClick={() => setModal({ t: "cities" })}><Shuffle size={15} /> Change cities</button>
             )}
+            <button className="btn-secondary w-full" onClick={() => setModal({ t: "whatif" })}><SlidersHorizontal size={15} /> What if my budget changes?</button>
             <ExportButton pkg={pkg} />
             <button className="btn-primary w-full !py-3 text-base" onClick={() => { setConfirmErr(null); setModal({ t: "confirm" }); }}>Confirm package</button>
             {over && <p className="text-center text-xs text-rose-600">Over budget by {inr(-pkg.summary.remaining_inr)}</p>}
@@ -109,6 +121,7 @@ export default function PackagePage() {
       {modal?.t === "flight" && <ChangeFlightModal pkgId={id} direction={modal.dir} onClose={() => setModal(null)} onChanged={changed} />}
       {modal?.t === "hotel" && <ChangeHotelModal pkgId={id} city={modal.city} onClose={() => setModal(null)} onChanged={changed} />}
       {modal?.t === "attr" && <AttractionEditor pkgId={id} onClose={() => setModal(null)} onChanged={changed} />}
+      {modal?.t === "whatif" && <WhatIfModal pkg={pkg} onClose={() => setModal(null)} onReplan={replan} />}
       {modal?.t === "cities" && <CityPlanModal pkgId={id} onClose={() => setModal(null)} onChanged={changed} />}
       {modal?.t === "confirm" && !booked && (
         <Modal title="Confirm your holiday" onClose={() => setModal(null)}>
