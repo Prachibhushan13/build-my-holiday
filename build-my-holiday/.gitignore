@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+backend/var/
+*.sqlite3*
+.pytest_cache/
+_to_delete/
+_frontend.tar.gz
