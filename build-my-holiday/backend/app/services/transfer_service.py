@@ -8,7 +8,7 @@ from .timeutil import at, hm, in_window, parse_dt, window
 
 ARRIVAL_BUFFER_MIN = 60     # pickup >= landing + 60
 RETURN_BUFFER_MIN = 180     # at the airport >= 180 min before departure
-INTERCITY_EARLIEST = 10 * 60
+INTERCITY_EARLIEST = 10 * 60 #10am
 
 
 @dataclass(frozen=True)
