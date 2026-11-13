@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
@@ -11,6 +12,7 @@ from ..services import booking_service as booking
 from ..services import package_service as ps
 from ..services.package_builder import to_export
 
+log = logging.getLogger("bmh")
 router = APIRouter(prefix="/api/packages", tags=["packages"])
 
 
@@ -24,8 +26,10 @@ def _wrap(fn):
     except ps.NotFound as e:
         raise HTTPException(404, str(e))
     except ps.ChangeRejected as e:
+        log.warning("REFUSED: %s | rules: %s", e.message, [v["code"] for v in e.violations] or "-")
         raise HTTPException(409, {"message": e.message, "violations": e.violations})
     except RequestInvalid as e:
+        log.warning("INVALID REQUEST: %s", [(x["field"], x["message"]) for x in e.errors])
         raise HTTPException(422, {"message": str(e), "errors": e.errors})
 
 
