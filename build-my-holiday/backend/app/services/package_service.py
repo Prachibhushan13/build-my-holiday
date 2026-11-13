@@ -150,7 +150,10 @@ def over_budget_suggestions(cat, req: dict, cheapest_total: int, spec_trip: dict
 def generate_packages(cat, raw: TripRequest) -> dict:
     req = normalize_request(cat, raw)
     res = gen.generate(cat, req)
+    log.info("generate: %s %s->%s %s %dn %da+%dc budget=%d => %s (%s plans)", req["name"], req["departure_airport"], req["country"],
+             req["start_date"], req["nights"], req["adults"], len(req["child_ages"]), req["budget_inr"], res["status"], res.get("plans_considered"))
     if res["status"] == "IMPOSSIBLE":
+        log.info("generate: impossible because %s", res["reasons"])
         return {"status": "IMPOSSIBLE", "request": req, "reasons": res["reasons"],
                 "message": "No holiday package is possible for this request.", "options": [], "package": None}
     group = new_id()
@@ -210,6 +213,7 @@ def modify(cat, pid: str, mutate: Callable[[dict, dict, list], None]) -> dict:
         db.save_package(conn, pid, "PLANNED", json.loads(row["request_json"]), new_spec, trip)
         out = build_payload(cat, pid, "PLANNED", None, row["option_label"], json.loads(row["request_json"]),
                             new_spec, trip, row["group_id"])
+    log.info("change applied to %s: total %d -> %d | %s", pid, old_trip["total_inr"], trip["total_inr"], notes or "no notes")
     out["change"] = {"previous_total_inr": old_trip["total_inr"], "new_total_inr": trip["total_inr"],
                      "price_diff_inr": trip["total_inr"] - old_trip["total_inr"], "notes": notes}
     return out
